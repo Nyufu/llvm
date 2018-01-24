@@ -465,6 +465,14 @@ static std::error_code rename_internal(HANDLE FromHandle, const Twine &To,
   RenameInfo.FileNameLength = ToWide.size();
   std::copy(ToWide.begin(), ToWide.end(), &RenameInfo.FileName[0]);
 
+  SYSTEMTIME systemtime;
+  FILETIME filetime;
+  ::GetSystemTime(&systemtime);
+  ::SystemTimeToFileTime(&systemtime, &filetime);
+  auto TrackingWorkaroundHandle = ::CreateFileW(ToWide.data(), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  ::SetFileTime(TrackingWorkaroundHandle, NULL, NULL, &filetime);
+  ::CloseHandle(TrackingWorkaroundHandle);
+
   SetLastError(ERROR_SUCCESS);
   if (!SetFileInformationByHandle(FromHandle, FileRenameInfo, &RenameInfo,
                                   RenameInfoBuf.size())) {
